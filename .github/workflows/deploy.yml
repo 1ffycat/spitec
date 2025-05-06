@@ -16,6 +16,9 @@ jobs:
             kill -9 $(cat /tmp/gunicorn.pid) || true
             rm /tmp/gunicorn.pid
           fi
+          # Stop any existing pm2 processes
+          npm install -g pm2 || true
+          pm2 delete all || true
 
       # Checkout the repository
       - name: Checkout Code
@@ -37,13 +40,26 @@ jobs:
         run: |
           poetry install
 
-      # Start the application with setsid to detach it
+      # Install Node.js for pm2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'  # Use a stable Node.js version
+
+      # Install pm2 globally
+      - name: Install PM2
+        run: |
+          npm install -g pm2
+
+      # Start the application with pm2
       - name: Start Application
         run: |
           if [ ! -d "./logging" ]; then
             mkdir logging
           fi
-          setsid poetry run gunicorn -w 4 -b 0.0.0.0:80 --pid /tmp/gunicorn.pid main:server > ./logging/log.txt 2>&1 &
+          # Start Gunicorn with pm2, saving the process list
+          pm2 start --name gunicorn "poetry run gunicorn -w 4 -b 0.0.0.0:80 --pid /tmp/gunicorn.pid main:server" --output ./logging/log.txt --error ./logging/log.txt
+          pm2 save
           # Wait for PID file to confirm application start
           COUNTER=0
           while [ ! -f /tmp/gunicorn.pid ]; do
