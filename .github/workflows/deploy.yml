@@ -37,13 +37,13 @@ jobs:
         run: |
           poetry install
 
-      # Start the application
+      # Start the application with setsid to detach it
       - name: Start Application
         run: |
           if [ ! -d "./logging" ]; then
             mkdir logging
           fi
-          nohup poetry run gunicorn -w 4 -b 0.0.0.0:80 --pid /tmp/gunicorn.pid main:server > ./logging/log.txt 2>&1 &
+          setsid poetry run gunicorn -w 4 -b 0.0.0.0:80 --pid /tmp/gunicorn.pid main:server > ./logging/log.txt 2>&1 &
           # Wait for PID file to confirm application start
           COUNTER=0
           while [ ! -f /tmp/gunicorn.pid ]; do
